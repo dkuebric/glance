@@ -44,6 +44,13 @@ from glance.common import utils
 from glance.openstack.common import cfg
 import glance.openstack.common.log as os_logging
 
+# Imports for Tracelytics/Oboe
+try:
+    from oboeware import OboeMiddleware
+    import oboe
+except ImportError:
+    sys.exc_clear()
+# End imports for Tracelytics/Oboe
 
 bind_opts = [
     cfg.StrOpt('bind_host', default='0.0.0.0'),
@@ -396,6 +403,10 @@ class Router(object):
         self.map = mapper
         self._router = routes.middleware.RoutesMiddleware(self._dispatch,
                                                           self.map)
+        if 'oboe' in sys.modules:
+            oboe.config['tracing_mode'] = 'always'
+            oboe.config['sample_rate'] = 1.0
+            self._router = OboeMiddleware(self._router, {}, layer="glance")
 
     @classmethod
     def factory(cls, global_conf, **local_conf):
